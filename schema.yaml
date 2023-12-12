@@ -26,6 +26,7 @@ components:
                 id: string
             ```
           default: {}
+          nullable: true
           additionalProperties:
             type: object
             x-walrus-ui:
