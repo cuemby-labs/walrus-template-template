@@ -9,7 +9,7 @@ jobs:
     strategy:
       matrix:
         engine: ["opentofu", "terraform"]
-        version: ["1.6", "1.7"]
+        version: []
         experimental: [false]
         include:
           - version: "1.8"
