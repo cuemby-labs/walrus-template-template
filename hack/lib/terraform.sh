@@ -8,8 +8,14 @@
 # TERRAFORM_DOCS_VERSION  -  The Terraform docs version, default is v0.16.0.
 #         TFLINT_VERSION  -  The TFLint version, default is v0.48.0.
 #          TFSEC_VERSION  -  The TFSec version, default is v1.28.4.
-
+terraform_engine=${TERRAFORM_ENGINE:-"opentofu"}
 terraform_version=${TERRAFORM_VERSION:-"v1.6.2"}
+terraform_binary=${TERRAFORM_BINARY:-"terraform"}
+if [[ "$terraform_engine" == "opentofu" ]]; then
+  terraform_version="v1.8.1"
+  terraform_binary="tofu"
+fi
+terratest_go_test_opts=${GO_TEST_OPTS:-""}
 terraform_docs_version=${TERRAFORM_DOCS_VERSION:-"v0.16.0"}
 tflint_version=${TFLINT_VERSION:-"v0.48.0"}
 tfsec_version=${TFSEC_VERSION:-"v1.28.4"}
@@ -19,13 +25,23 @@ function seal::terraform::terraform::install() {
   os=$(seal::util::get_os)
   local arch
   arch=$(seal::util::get_arch)
-  
-  curl --retry 3 --retry-all-errors --retry-delay 3 \
-    -o /tmp/terraform.zip \
-    -sSfL "https://releases.hashicorp.com/terraform/${terraform_version#v}/terraform_${terraform_version#v}_${os}_${arch}.zip"
-  
-  unzip -qu /tmp/terraform.zip -d "${ROOT_DIR}/.sbin"
-  chmod a+x "${ROOT_DIR}/.sbin/terraform"
+
+  if [[ "$terraform_engine" == "terraform" ]]; then
+    curl --retry 3 --retry-all-errors --retry-delay 3 \
+      -o /tmp/terraform.zip \
+      -sSfL "https://releases.hashicorp.com/terraform/${terraform_version#v}/terraform_${terraform_version#v}_${os}_${arch}.zip"
+    
+    unzip -qu /tmp/terraform.zip -d "${ROOT_DIR}/.sbin"
+    chmod a+x "${ROOT_DIR}/.sbin/terraform"
+  else
+    echo "Downloading: https://github.com/opentofu/opentofu/releases/download/${terraform_version}/tofu_${terraform_version#v}_${os}_${arch}.zip"
+    curl --retry 3 --retry-all-errors --retry-delay 3 \
+      -o /tmp/tofu.zip \
+      -sSfL "https://github.com/opentofu/opentofu/releases/download/${terraform_version}/tofu_${terraform_version#v}_${os}_${arch}.zip"
+    
+    unzip -qu /tmp/tofu.zip -d "${ROOT_DIR}/.sbin"
+    chmod a+x "${ROOT_DIR}/.sbin/tofu"
+  fi
 }
 
 function seal::terraform::terraform::validate() {
@@ -46,10 +62,15 @@ function seal::terraform::terraform::validate() {
 }
 
 function seal::terraform::terraform::bin() {
-  local bin="terraform"
-  if [[ -f "${ROOT_DIR}/.sbin/terraform" ]]; then
-    bin="${ROOT_DIR}/.sbin/terraform"
+  local bin="${terraform_binary}"
+  if [[ "$terraform_engine" == "opentofu" ]]; then
+    bin="tofu"
   fi
+  
+  if [[ -f "${ROOT_DIR}/.sbin/${bin}" ]]; then
+    bin="${ROOT_DIR}/.sbin/${bin}"
+  fi
+  
   echo -n "${bin}"
 }
 

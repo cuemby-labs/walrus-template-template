@@ -1,5 +1,6 @@
 # Files
 **/.terraform/*
+.terraform/
 .terraform.lock.hcl
 *.tfstate
 *.tfstate.*
@@ -12,7 +13,8 @@ override.tf.json
 .terraformrc
 terraform.rc
 .DS_Store
-
+.env
+.envrc
 
 # Dirs
 .sbin

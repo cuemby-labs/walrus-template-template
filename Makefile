@@ -36,3 +36,55 @@ help:
 
 .DEFAULT_GOAL := ci
 .PHONY: $(targets) examples $(examples) modules $(modules) tests docs schema
+
+TENV_AUTO_INSTALL:=true
+TERRAFORM_ENGINE:=opentofu
+ifeq ($(TERRAFORM_ENGINE), terraform)
+	TERRAFORM_BINARY:=terraform
+else ifeq ($(TERRAFORM_ENGINE), opentofu)
+	TERRAFORM_BINARY:=tofu
+endif
+
+GO_TEST_OPTS:=
+TERRATEST_FILES:=$(wildcard tests/*_test.go)
+terratest/go.mod:
+	cd tests && \
+	rm -rf go.mod && \
+	go mod init "terratest"
+terratest/go.sum: terratest/go.mod $(TERRATEST_FILES)
+	cd tests && \
+	rm -rf go.sum && \
+	go mod tidy
+.PHONY: terratest
+terratest: terratest/go.sum
+	cd tests && \
+	TERRAFORM_BINARY=$(TERRAFORM_BINARY) go test -v -timeout 60m $(GO_TEST_OPTS)
+
+CHECKOV_OPTS:=
+security/checkov:
+	checkov --directory . $(CHECKOV_OPTS)
+security/trivy:
+	trivy config .
+.PHONY: security
+security: security/checkov security/trivy
+
+tflint/fix:
+	tflint --init
+	tflint --fix
+tflint/lint:
+	tflint --init
+	tflint
+.PHONY: tflint
+tflint: tflint/lint tflint/fix
+
+.PHONY:
+validate:
+	$(TERRAFORM_BINARY) init -backend=false
+	$(TERRAFORM_BINARY) validate
+
+.PHONY: clean
+clean:
+	@echo "Removing files and directories listed in .gitignore recursively..."
+	@grep -v '^#' .gitignore | grep -v '^$$' | while read -r pattern; do \
+	    find . -path "./$$pattern" -exec rm -rf {} +; \
+	done

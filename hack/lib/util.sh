@@ -135,3 +135,15 @@ function seal::util::wait_jobs() {
 function seal::util::dismiss() {
   echo "" 1>/dev/null 2>&1
 }
+
+function seal::util::engine() {
+  local func_name=$1
+  shift
+
+  local engine=${TF_ENGINE:-"opentofu"}
+  local func="seal::${engine}::${func_name}"
+
+  echo "Executing ${func}"
+
+  eval "$func" "$@"
+}
